@@ -24,10 +24,18 @@ def plot(series, cfg=None):
 
     interval = maximum - minimum
     offset = cfg['offset'] if 'offset' in cfg else 3
-    height = cfg['height'] if 'height' in cfg else interval
-    ratio = height / interval
-    min2 = floor(minimum * ratio)
-    max2 = ceil(maximum * ratio)
+    target_height = cfg['height'] if 'height' in cfg else interval
+    actual_height = float("inf")
+
+    i = 0
+    while actual_height > target_height:
+        ratio = (target_height - i) / interval
+        min2 = floor(minimum * ratio)
+        max2 = ceil(maximum * ratio)
+        actual_height = max2 - min2 + 1
+        i += 1
+
+    assert actual_height == target_height
 
     rows = max2 - min2
     width = len(series) + offset
