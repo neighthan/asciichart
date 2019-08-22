@@ -1,3 +1,6 @@
+"""
+"""
+
 # -*- coding: utf-8 -*-
 
 # -----------------------------------------------------------------------------
@@ -12,9 +15,17 @@ __all__ = ['plot']
 # -----------------------------------------------------------------------------
 
 def plot(series, cfg=None, title=None):
-    """ Possible cfg parameters are 'minimum', 'maximum', 'offset', 'height' and 'format'.
-	cfg is a dictionary, thus dictionary syntax has to be used.
-	Example: print(plot(series, { 'height' :10 }))
+    """
+    :param series: a sequence of numeric values
+    :param cfg: possible cfg parameters are 'minimum', 'maximum', 'height' and 'format'.
+    :param title: the title for the plot. It will be centered over the main (non-axis)
+      region of the plot if possible. If the title is too long, it begins just after the
+      y-axis.
+
+    Usage:
+    ```
+    print(plot([1, 3, 10 7], {'height': 10}))
+    ```
 	"""
     cfg = cfg or {}
     minimum = cfg['minimum'] if 'minimum' in cfg else min(series)
@@ -23,35 +34,47 @@ def plot(series, cfg=None, title=None):
         raise ValueError('The minimum value cannot exceed the maximum value.')
 
     interval = maximum - minimum
-    offset = cfg['offset'] if 'offset' in cfg else 3
     height = cfg['height'] if 'height' in cfg else ceil(interval)
+    width = cfg.get('width', None)
+    if title:
+        height -= 1
     ratio = interval / (height - 1)
-    width = len(series) + offset
-    placeholder = cfg['format'] if 'format' in cfg else '{:8.2f} '
 
+    n_decimals = 2
+    n_digits_max = len(str(int(max(series))))
+    placeholder = cfg['format'] if 'format' in cfg else f'{{:{n_digits_max + n_decimals + 1}.{n_decimals}f}} '
+    offset = cfg['offset'] if 'offset' in cfg else 3
+    if offset:
+        placeholder = ' ' * offset + placeholder
+    axis_len = len(placeholder.format(max(series))) + 1 # + 1 for the ┤
+    if width:
+        series = series[-(width - axis_len):]
+    else:
+        width = len(series) + axis_len
     result = [[' '] * width for i in range(height)]
 
     # axis and labels
     for i in range(height):
         label = placeholder.format(minimum + i * ratio)
-        result[i][max(offset - len(label), 0)] = label
-        result[i][offset - 1] = '┼' if i == 0 else '┤'
+        for j, char in enumerate(label):
+            result[i][j] = char
+        result[i][axis_len - 1] = '┼' if i == 0 else '┤'
 
     y0 = int((series[0] - minimum) / ratio)
-    result[y0][offset - 1] = '┼' # first value
+    result[y0][axis_len - 1] = '┼' # first value
 
     for i in range(len(series) - 1): # plot the line
         y0 = round((series[i] - minimum) / ratio)
         y1 = round((series[i + 1] - minimum) / ratio)
         if y0 == y1:
-            result[y0][i + offset] = '─'
+            result[y0][i + axis_len] = '─'
         else:
-            result[y1][i + offset] = '╰' if y0 > y1 else '╭'
-            result[y0][i + offset] = '╮' if y0 > y1 else '╯'
+            result[y1][i + axis_len] = '╰' if y0 > y1 else '╭'
+            result[y0][i + axis_len] = '╮' if y0 > y1 else '╯'
             start = min(y0, y1) + 1
             end = max(y0, y1)
             for y in range(start, end):
-                result[y][i + offset] = '│'
+                result[y][i + axis_len] = '│'
 
     plot_string = '\n'.join([''.join(row) for row in result[::-1]])
     if title:
